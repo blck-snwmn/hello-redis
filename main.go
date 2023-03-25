@@ -38,7 +38,10 @@ func main() {
 		},
 	})
 
-	ctx := context.Background()
+	setAndGet(context.Background(), rdb)
+}
+
+func setAndGet(ctx context.Context, rdb redis.UniversalClient) {
 	err := rdb.Set(ctx, "key", "value", 0).Err()
 	if err != nil {
 		panic(err)
@@ -51,11 +54,12 @@ func main() {
 	fmt.Println("key", val)
 
 	val2, err := rdb.Get(ctx, "key2").Result()
-	if errors.Is(err, redis.Nil) {
+	switch {
+	case errors.Is(err, redis.Nil):
 		fmt.Println("key2 does not exist")
-	} else if err != nil {
+	case err != nil:
 		panic(err)
-	} else {
+	default:
 		fmt.Println("key2", val2)
 	}
 }
