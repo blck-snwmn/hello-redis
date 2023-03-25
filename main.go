@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -39,6 +41,7 @@ func main() {
 	})
 
 	setAndGet(context.Background(), rdb)
+	pubsub(context.Background(), rdb)
 }
 
 func setAndGet(ctx context.Context, rdb redis.UniversalClient) {
@@ -62,4 +65,35 @@ func setAndGet(ctx context.Context, rdb redis.UniversalClient) {
 	default:
 		fmt.Println("key2", val2)
 	}
+}
+
+func pubsub(ctx context.Context, rdb redis.UniversalClient) {
+	const cname = "channelname"
+
+	var sg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		sg.Add(1)
+		subscriber := rdb.Subscribe(ctx, cname)
+		go func(num int, subscriber *redis.PubSub) {
+			defer sg.Done()
+			for i := 0; i < 3; i++ { // recieve 3 message
+				msg, err := subscriber.ReceiveMessage(ctx)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				fmt.Printf("[%d]channel=%s, payload=%s\n", num, msg.Channel, msg.Payload)
+			}
+		}(i, subscriber)
+	}
+
+	time.Sleep(time.Second) // wait for setup
+
+	// publish 3 message
+	for _, msg := range []string{"this is message", "good morning", "foo bar"} {
+		if err := rdb.Publish(ctx, cname, msg).Err(); err != nil {
+			panic(err)
+		}
+	}
+	sg.Wait()
 }
