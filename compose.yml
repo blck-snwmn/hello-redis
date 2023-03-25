@@ -1,0 +1,74 @@
+version: '3'
+
+services:
+  redis-0:
+    image: redis:latest
+    command: redis-server --cluster-enabled yes --cluster-config-file /data/nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-0:/data
+    networks:
+      redis-cluster:
+
+  redis-1:
+    image: redis:latest
+    command: redis-server --cluster-enabled yes --cluster-config-file /data/nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-1:/data
+    networks:
+      redis-cluster:
+
+  redis-2:
+    image: redis:latest
+    command: redis-server --cluster-enabled yes --cluster-config-file /data/nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis-2:/data
+    networks:
+      redis-cluster:
+
+  redis-3:
+    image: redis:latest
+    command: redis-server --cluster-enabled yes --cluster-config-file /data/nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    ports:
+      - "6382:6379"
+    volumes:
+      - redis-3:/data
+    networks:
+      redis-cluster:
+
+  redis-4:
+    image: redis:latest
+    command: redis-server --cluster-enabled yes --cluster-config-file /data/nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    ports:
+      - "6383:6379"
+    volumes:
+      - redis-4:/data
+    networks:
+      redis-cluster:
+
+  redis-5:
+    image: redis:latest
+    command: redis-server --cluster-enabled yes --cluster-config-file /data/nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    ports:
+      - "6384:6379"
+    volumes:
+      - redis-5:/data
+    networks:
+      redis-cluster:
+
+volumes:
+  redis-0:
+  redis-1:
+  redis-2:
+  redis-3:
+  redis-4:
+  redis-5:
+
+networks:
+  redis-cluster:
+    driver: bridge
