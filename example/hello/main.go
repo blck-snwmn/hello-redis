@@ -69,20 +69,23 @@ func setAndGet(ctx context.Context, rdb redis.UniversalClient) {
 
 func pubsub(ctx context.Context, rdb redis.UniversalClient) {
 	const cname = "channelname"
+	const recieverNum = 1000
+
+	sendMessages := []string{"this is message", "good morning", "foo bar"}
 
 	var sg sync.WaitGroup
-	for i := 0; i < 10; i++ {
+	for i := 0; i < recieverNum; i++ {
 		sg.Add(1)
 		subscriber := rdb.Subscribe(ctx, cname)
 		go func(num int, subscriber *redis.PubSub) {
 			defer sg.Done()
-			for i := 0; i < 3; i++ { // recieve 3 message
+			for i := 0; i < len(sendMessages); i++ { // recieve 3 message
 				msg, err := subscriber.ReceiveMessage(ctx)
 				if err != nil {
 					fmt.Println(err)
 					return
 				}
-				fmt.Printf("[%d]channel=%s, payload=%s\n", num, msg.Channel, msg.Payload)
+				fmt.Printf("[%3d]channel=%s, payload=%s\n", num, msg.Channel, msg.Payload)
 			}
 		}(i, subscriber)
 	}
@@ -90,7 +93,7 @@ func pubsub(ctx context.Context, rdb redis.UniversalClient) {
 	time.Sleep(time.Second) // wait for setup
 
 	// publish 3 message
-	for _, msg := range []string{"this is message", "good morning", "foo bar"} {
+	for _, msg := range sendMessages {
 		if err := rdb.Publish(ctx, cname, msg).Err(); err != nil {
 			panic(err)
 		}
