@@ -59,6 +59,7 @@ func get(ctx context.Context, client rueidis.Client, key string) (string, error)
 	if err != nil {
 		return "", err
 	}
+	log.Printf("cache hit: %v\n", result.IsCacheHit())
 	return result.ToString()
 }
 
