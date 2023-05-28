@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/redis/rueidis"
 )
@@ -40,6 +41,8 @@ func main() {
 }
 
 func getHandler(client rueidis.Client, w http.ResponseWriter, r *http.Request) {
+	defer func(now time.Time) { log.Printf("getHandler took %s\n", time.Since(now)) }(time.Now())
+
 	get, err := get(r.Context(), client, "key")
 	if err != nil {
 		log.Printf("failed to get value: %+v\n", err)
@@ -50,8 +53,8 @@ func getHandler(client rueidis.Client, w http.ResponseWriter, r *http.Request) {
 }
 
 func get(ctx context.Context, client rueidis.Client, key string) (string, error) {
-	cmd := client.B().Get().Key(key).Build()
-	result := client.Do(ctx, cmd)
+	cmd := client.B().Get().Key(key).Cache()
+	result := client.DoCache(ctx, cmd, time.Minute)
 	err := result.Error()
 	if err != nil {
 		return "", err
@@ -60,6 +63,8 @@ func get(ctx context.Context, client rueidis.Client, key string) (string, error)
 }
 
 func postHandler(client rueidis.Client, w http.ResponseWriter, r *http.Request) {
+	defer func(now time.Time) { log.Printf("postHandler took %s\n", time.Since(now)) }(time.Now())
+
 	v := r.URL.Query().Get("kv")
 	if v == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -77,7 +82,10 @@ func postHandler(client rueidis.Client, w http.ResponseWriter, r *http.Request) 
 }
 
 func set(ctx context.Context, client rueidis.Client, key, value string) error {
-	cmd := client.B().Set().Key(key).Value(value).Nx().Build()
+	cmd := client.B().Set().
+		Key(key).Value(value).
+		// Nx().
+		Build()
 	err := client.Do(ctx, cmd).Error()
 	if err != nil {
 		if !rueidis.IsRedisNil(err) {
