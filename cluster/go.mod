@@ -1,4 +1,4 @@
-module github.com/blck-snwmn/hello-redis
+module github.com/blck-snwmn/hello-redis/cluster
 
 go 1.20
 
