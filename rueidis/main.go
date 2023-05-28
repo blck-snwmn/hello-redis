@@ -1,0 +1,79 @@
+package main
+
+import (
+	"context"
+	"log"
+	"net/http"
+
+	"github.com/redis/rueidis"
+)
+
+func main() {
+	client, err := rueidis.NewClient(rueidis.ClientOption{
+		InitAddress: []string{"127.0.0.1:6379"},
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer client.Close()
+
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		err := client.Do(r.Context(), client.B().Ping().Build()).Error()
+		if err != nil {
+			log.Printf("failed to ping: %+v\n", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte("connected\n"))
+	})
+	http.HandleFunc("/value", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			get, err := get(r.Context(), client, "key")
+			if err != nil {
+				log.Printf("failed to get value: %+v\n", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Write([]byte(get + "\n"))
+		case http.MethodPost:
+			v := r.URL.Query().Get("kv")
+			if v == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				w.Write([]byte("kv is empty\n"))
+				return
+			}
+			log.Printf("set value: %s\n", v)
+			err := set(r.Context(), client, "key", v)
+			if err != nil {
+				log.Printf("failed to set value: %+v\n", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Write([]byte("success\n"))
+		}
+	})
+	http.ListenAndServe(":8080", nil)
+}
+
+func get(ctx context.Context, client rueidis.Client, key string) (string, error) {
+	cmd := client.B().Get().Key(key).Build()
+	result := client.Do(ctx, cmd)
+	err := result.Error()
+	if err != nil {
+		return "", err
+	}
+	return result.ToString()
+}
+
+func set(ctx context.Context, client rueidis.Client, key, value string) error {
+	cmd := client.B().Set().Key(key).Value(value).Nx().Build()
+	err := client.Do(ctx, cmd).Error()
+	if err != nil {
+		if !rueidis.IsRedisNil(err) {
+			return err
+		}
+		log.Printf("key(%s) already exists", key)
+	}
+	return nil
+}
