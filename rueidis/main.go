@@ -29,31 +29,24 @@ func main() {
 	http.HandleFunc("/value", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			get, err := get(r.Context(), client, "key")
-			if err != nil {
-				log.Printf("failed to get value: %+v\n", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Write([]byte(get + "\n"))
+			getHandler(client, w, r)
 		case http.MethodPost:
-			v := r.URL.Query().Get("kv")
-			if v == "" {
-				w.WriteHeader(http.StatusBadRequest)
-				w.Write([]byte("kv is empty\n"))
-				return
-			}
-			log.Printf("set value: %s\n", v)
-			err := set(r.Context(), client, "key", v)
-			if err != nil {
-				log.Printf("failed to set value: %+v\n", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Write([]byte("success\n"))
+			postHandler(client, w, r)
+		default:
+			w.WriteHeader(http.StatusMethodNotAllowed)
 		}
 	})
 	http.ListenAndServe(":8080", nil)
+}
+
+func getHandler(client rueidis.Client, w http.ResponseWriter, r *http.Request) {
+	get, err := get(r.Context(), client, "key")
+	if err != nil {
+		log.Printf("failed to get value: %+v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte(get + "\n"))
 }
 
 func get(ctx context.Context, client rueidis.Client, key string) (string, error) {
@@ -64,6 +57,23 @@ func get(ctx context.Context, client rueidis.Client, key string) (string, error)
 		return "", err
 	}
 	return result.ToString()
+}
+
+func postHandler(client rueidis.Client, w http.ResponseWriter, r *http.Request) {
+	v := r.URL.Query().Get("kv")
+	if v == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("kv is empty\n"))
+		return
+	}
+	log.Printf("set value: %s\n", v)
+	err := set(r.Context(), client, "key", v)
+	if err != nil {
+		log.Printf("failed to set value: %+v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Write([]byte("success\n"))
 }
 
 func set(ctx context.Context, client rueidis.Client, key, value string) error {
